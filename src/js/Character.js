@@ -6,8 +6,9 @@ export default class Character {
     this.health = 50;
     this.type = type;
     // TODO: throw error if user use "new Character()"
+
     if (new.target.name === 'Character') {
-      throw new Error('It is forbidden to create objects of the Character class');
+      throw new Error('Нельзя создать объект класса Character');
     }
   }
 

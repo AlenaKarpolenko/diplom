@@ -6,8 +6,8 @@ import Swordsman from '../Characters/Swordsman';
 import Undead from '../Characters/Undead';
 import Vampire from '../Characters/Vampire';
 
-test('При попытке создать новый объект класса Character выбрасывается ошибка', () => {
-  expect(() => new Character(1)).toThrowError(new Error('It is forbidden to create objects of the Character class'));
+test('При создании нового объекта класса Character выбрасывается ошибка', () => {
+  expect(() => new Character(1)).toThrowError(new Error('Нельзя создать объект класса Character'));
 });
 
 test.each([
@@ -18,7 +18,7 @@ test.each([
   [new Undead(1)],
   [new Vampire(1)],
 ])(
-  ('Не должно быть выброса ошибки'), (char) => {
+  ('Нет выброса ошибки'), (char) => {
     expect(() => char).not.toThrow();
   },
 );
