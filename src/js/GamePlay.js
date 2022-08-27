@@ -178,12 +178,10 @@ export default class GamePlay {
   }
 
   static showError(message) {
-    // eslint-disable-next-line no-alert
     alert(message);
   }
 
   static showMessage(message) {
-    // eslint-disable-next-line no-alert
     alert(message);
   }
 
