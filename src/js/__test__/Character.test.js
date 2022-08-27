@@ -1,24 +1,28 @@
 import Character from '../Character';
-import Bowman from '../Characters/Bowman';
-import Daemon from '../Characters/Daemon';
-import Magician from '../Characters/Magician';
-import Swordsman from '../Characters/Swordsman';
-import Undead from '../Characters/Undead';
-import Vampire from '../Characters/Vampire';
 
-test('При создании нового объекта класса Character выбрасывается ошибка', () => {
-  expect(() => new Character(1)).toThrowError(new Error('Нельзя создать объект класса Character'));
+test('проверка создания объекта класса Character', () => {
+  function createCharacter() {
+    return new Character(1, 'Bowman');
+  }
+  expect(createCharacter).toThrowError(new Error('Нельзя создать объект класса Character'));
 });
 
-test.each([
-  [new Bowman(1)],
-  [new Daemon(1)],
-  [new Magician(1)],
-  [new Swordsman(1)],
-  [new Undead(1)],
-  [new Vampire(1)],
-])(
-  ('Нет выброса ошибки'), (char) => {
-    expect(() => char).not.toThrow();
-  },
-);
+test('проверка создания объектов унаследованного класса', () => {
+  function createBowman() {
+    class Bowman extends Character {
+      constructor(level, type = 'generic') {
+        super(level, type);
+      }
+    }
+    return new Bowman(1, 'Bowman');
+  }
+
+  const res = {
+    attack: 0,
+    defence: 0,
+    health: 100,
+    level: 1,
+    type: 'Bowman',
+  };
+  expect(createBowman()).toEqual(res);
+});

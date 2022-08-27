@@ -1,123 +1,728 @@
 import themes from './themes';
+import PositionedCharacter from './PositionedCharacter';
 import Team from './Team';
-import { generateTeam } from './generators';
 import Bowman from './Characters/Bowman';
+import Undead from './Characters/Undead';
+import { generateTeam } from './generators';
 import Swordsman from './Characters/Swordsman';
 import Daemon from './Characters/Daemon';
-import Undead from './Characters/Undead';
-import Vampire from './Characters/Vampire';
 import Magician from './Characters/Magician';
-import PositionedCharacter from './PositionedCharacter';
+import Vampire from './Characters/Vampire';
 import GameState from './GameState';
 import GamePlay from './GamePlay';
 import cursors from './cursors';
+
+const userCommandInit = [Swordsman, Bowman, Magician];
+const pcCommandInit = [Daemon, Undead, Vampire];
+const positionForUser = [];
+const positionForPC = [];
+const typePersonUser = ['bowman', 'swordsman', 'magician'];
+
+function gettingAPositionForUser(boardSize) {
+  const sizeBoard = boardSize * boardSize;
+
+  for (let i = 0; i < sizeBoard; i += 1) {
+    if (i % boardSize === 0) {
+      positionForUser.push(i);
+      positionForUser.push(i + 1);
+    }
+  }
+}
+
+function gettingAPositionForPC(boardSize) {
+  const sizeBoard = boardSize * boardSize;
+
+  for (let i = 0; i < sizeBoard; i += 1) {
+    if ((i + 1) % boardSize === 0) {
+      positionForPC.push(i);
+      positionForPC.push(i - 1);
+    }
+  }
+}
 
 export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
     this.stateService = stateService;
-    this.userTeam = new Team();
-    this.botTeam = new Team();
-    this.botCharacters = [Daemon, Undead, Vampire];
-    this.userCharacters = [Bowman, Swordsman, Magician];
-    this.gameState = new GameState();
+    this.state = GameState.from({});
+    this.command = [];
+    this.userCommand = new Team();
+    this.pcCommand = new Team();
+    this.personIndex = null;
+    this.moveIndex = null;
+    this.activePlayer = 'user';
+    this.totalUserPoints = 0;
+    this.levelGame = 1;
   }
 
   init() {
-    // TODO: add event listeners to gamePlay events
-    // TODO: load saved stated from stateService
-    this.gamePlay.drawUi(themes[this.gameState.level]);
-    this.userTeam.addAll(generateTeam([Bowman, Swordsman], 1, 2));
-    this.botTeam.addAll(generateTeam(this.botCharacters, 1, 2));
-    this.addsTheTeamToPosition(this.userTeam, this.getUserStartPositions());
-    this.addsTheTeamToPosition(this.botTeam, this.getBotStartPositions());
-    this.gamePlay.redrawPositions(this.gameState.allPositions);
+    this.gettingAPositionForUser = gettingAPositionForUser(this.gamePlay.boardSize);
+    this.gettingAPositionForUser = gettingAPositionForPC(this.gamePlay.boardSize);
+    this.gamePlay.drawUi(themes.prairie);
+    this.userCommand.addAll(...generateTeam(userCommandInit, 1, 2));
+    this.pcCommand.addAll(...generateTeam(pcCommandInit, 1, 2));
+    this.gettingACommand(this.userCommand, positionForUser);
+    this.gettingACommand(this.pcCommand, positionForPC);
+    this.gamePlay.redrawPositions(this.command);
     this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
-    this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
     this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
-    this.gamePlay.addNewGameListener(this.onNewGameClick.bind(this));
-    this.gamePlay.addSaveGameListener(this.onSaveGameClick.bind(this));
-    this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
-    GamePlay.showMessage(`Уровень ${this.gameState.level}`);
+    this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
+    this.gamePlay.addNewGameListener(this.startNewGame.bind(this));
+    this.gamePlay.addSaveGameListener(this.saveCurrentGame.bind(this));
+    this.gamePlay.addLoadGameListener(this.loadGame.bind(this));
   }
 
-  // КОМАНДА
+  startNewGame() {
+    GamePlay.showMessage('Новая игра');
+    this.gamePlay.blockedTheField();
+    this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
+    this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
+    this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
+    this.gamePlay.drawUi(themes.prairie);
+    this.command = [];
+    this.levelGame = 1;
+    this.userCommand = new Team();
+    this.pcCommand = new Team();
+    this.userCommand.addAll(...generateTeam(userCommandInit, 1, 2));
+    this.pcCommand.addAll(...generateTeam(pcCommandInit, 1, 2));
+    this.gettingACommand(this.userCommand, positionForUser);
+    this.gettingACommand(this.pcCommand, positionForPC);
+    this.activePlayer = 'user';
+    this.personIndex = null;
+    this.gamePlay.redrawPositions(this.command);
+  }
+
+  saveCurrentGame() {
+    const saveTheGame = {
+      levelGame: this.levelGame,
+      activePlayer: this.activePlayer,
+      command: this.command,
+      userCommand: this.userCommand,
+      totalUserPoints: this.totalUserPoints,
+    };
+
+    this.stateService.save(saveTheGame);
+    GamePlay.showMessage('Игра сохранена');
+  }
+
+  loadGame() {
+    GamePlay.showMessage('Игра загружена');
+    this.gamePlay.blockedTheField();
+    this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
+    this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
+    this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
+    this.personIndex = null;
+    const gameLoad = (this.stateService.load());
+    this.levelGame = gameLoad.levelGame;
+    this.activePlayer = gameLoad.activePlayer;
+    this.totalUserPoints = gameLoad.totalUserPoints;
+    this.userCommand = new Team();
+    this.pcCommand = new Team();
+
+    this.command = gameLoad.command.reduce((team, person) => {
+      let personClass;
+
+      if (person.character.type === 'bowman') {
+        personClass = new Bowman(person.character.level);
+      }
+
+      if (person.character.type === 'swordsman') {
+        personClass = new Swordsman(person.character.level);
+      }
+
+      if (person.character.type === 'magician') {
+        personClass = new Magician(person.character.level);
+      }
+
+      if (person.character.type === 'daemon') {
+        personClass = new Daemon(person.character.level);
+      }
+
+      if (person.character.type === 'vampire') {
+        personClass = new Vampire(person.character.level);
+      }
+
+      if (person.character.type === 'undead') {
+        personClass = new Undead(person.character.level);
+      }
+
+      personClass.health = person.character.health;
+      personClass.attack = person.character.attack;
+      personClass.defence = person.character.defence;
+      personClass.position = person.position;
+
+      if (person.character.type === 'bowman' || person.character.type === 'swordsman' || person.character.type === 'magician') {
+        this.userCommand.add(personClass);
+      } else {
+        this.pcCommand.add(personClass);
+      }
+
+      const personTeam = new PositionedCharacter(personClass, person.position);
+      team.push(personTeam);
+      return team;
+    }, []);
+
+    if (this.levelGame === 1) {
+      this.gamePlay.drawUi(themes.prairie);
+    }
+    if (this.levelGame === 2) {
+      this.gamePlay.drawUi(themes.desert);
+    }
+    if (this.levelGame === 3) {
+      this.gamePlay.drawUi(themes.arctic);
+    }
+    if (this.levelGame === 4) {
+      this.gamePlay.drawUi(themes.mountain);
+    }
+    this.gamePlay.redrawPositions(this.command);
+    this.gamePlay.deselectCell(this.personIndex);
+  }
+
+  searchForAPersonInTheTeam(index) {
+    return this.command.some((person) => person.position === index);
+  }
+
+  getPersonType(index) {
+    const personType = this.command.find((person) => person.position === index);
+    return personType.character.type;
+  }
+
+  gettingARandomPosition(position) {
+    let pos = position[Math.floor(Math.random() * position.length)];
+
+    while (this.searchForAPersonInTheTeam(pos)) {
+      pos = position[Math.floor(Math.random() * position.length)];
+    }
+    return pos;
+  }
+
+  gettingACommand(team, position) {
+    for (const person of team) {
+      this.command.push(new PositionedCharacter(person, this.gettingARandomPosition(position)));
+    }
+  }
+
+  gameLevelUp() {
+    this.activePlayer = 'user';
+    this.command = [];
+
+    for (const person of this.userCommand) {
+      person.levelUp();
+    }
+
+    if (this.levelGame === 2) {
+      this.gamePlay.drawUi(themes.desert);
+
+      this.userCommand.addAll(...generateTeam(userCommandInit, 1, 1));
+      this.pcCommand.addAll(...generateTeam(pcCommandInit, 2, this.userCommand.members.size));
+    }
+
+    if (this.levelGame === 3) {
+      this.gamePlay.drawUi(themes.arctic);
+
+      this.userCommand.addAll(...generateTeam(userCommandInit, 2, 2));
+      this.pcCommand.addAll(...generateTeam(pcCommandInit, 3, this.userCommand.members.size));
+    }
+
+    if (this.levelGame === 4) {
+      this.gamePlay.drawUi(themes.mountain);
+
+      this.userCommand.addAll(...generateTeam(userCommandInit, 3, 2));
+      this.pcCommand.addAll(...generateTeam(pcCommandInit, 4, this.userCommand.members.size));
+    }
+    this.gettingACommand(this.userCommand, positionForUser);
+    this.gettingACommand(this.pcCommand, positionForPC);
+    this.gamePlay.redrawPositions(this.command);
+  }
+
+  winCheck() {
+    if (this.pcCommand.members.size === 0 && this.levelGame <= 3) {
+      this.activePlayer = 'user';
+      const levelPoints = [...this.userCommand].reduce((acc, item) => {
+        let sumHealth = acc;
+        sumHealth += item.health;
+        return sumHealth;
+      }, 0);
+      this.totalUserPoints += levelPoints;
+
+      this.state.totalUserPoints = this.totalUserPoints;
+      this.state.levelGame = this.levelGame + 1;
+      this.state.levelUserPoint = levelPoints;
+
+      this.levelGame += 1;
+      GamePlay.showMessage('Вы победили');
+      this.gameLevelUp();
+    }
+
+    if (this.pcCommand.members.size === 0 && this.levelGame === 4) {
+      GamePlay.showMessage(`Поздравляем! Вы выиграли. Количество набраных очков:${this.totalUserPoints}`);
+      this.activePlayer = 'user';
+      this.gamePlay.blockedTheField();
+    }
+
+    if (this.userCommand.members.size === 0) {
+      this.activePlayer = 'user';
+      GamePlay.showMessage(`Вы проиграли.... Количество набраных очков: ${this.totalUserPoints}`);
+      this.gamePlay.blockedTheField();
+    }
+  }
 
   onCellClick(index) {
     // TODO: react to click
-
-    if (this.gameState.level === 5 || this.userTeam.members.size === 0) {
+    if (this.levelGame === 5 || this.userCommand.members.size === 0) {
       return;
     }
 
-    //  атака
-    if (this.gameState.selected !== null && this.getChar(index) && this.isBotChar(index)) {
-      if (this.isAttack(index)) {
-        this.getAttack(index, this.gameState.selected);
-      }
-    }
-
-    // перемещение персонажа игрока
-    if (this.gameState.selected !== null && this.isMoving(index) && !this.getChar(index)) {
-      if (this.gameState.isUsersTurn) {
-        this.getUsersTurn(index);
-      }
-    }
-
-    // Если не валидный ход, то ошибка
-    if (this.gameState.selected !== null && !this.isMoving(index) && !this.isAttack(index)) {
-      if (this.gameState.isUsersTurn && !this.getChar(index)) {
-        GamePlay.showError('Недопустимый ход');
-      }
-    }
-
-    // Если ячейка пустая то при клике на неё return
-    if (!this.getChar(index)) {
+    if (this.activePlayer === 'PC') {
+      GamePlay.showError('Ход противника');
       return;
     }
 
-    // Если клик на бота, то ошибка
-    if (this.getChar(index) && this.isBotChar(index) && !this.isAttack(index)) {
-      GamePlay.showError('Это не ваш персонаж');
+    if (this.personIndex === null) {
+      if (!this.searchForAPersonInTheTeam(index)) {
+        GamePlay.showError('Выберите персонажа');
+      }
+      if (this.searchForAPersonInTheTeam(index)
+      && !typePersonUser.includes(this.getPersonType(index))) {
+        GamePlay.showError('Это не ваш персонаж');
+      }
     }
 
-    // Если клик на персонажа, то  клетка желтым
-    if (this.getChar(index) && this.isUserChar(index)) {
-      this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected-green'));
-      this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected-yellow'));
+    if (this.personIndex === null
+      && this.searchForAPersonInTheTeam(index)
+      && typePersonUser.includes(this.getPersonType(index))) {
       this.gamePlay.selectCell(index);
-      this.gameState.selected = index;
+      this.personIndex = index;
+    } else if (index !== this.personIndex
+        && this.searchForAPersonInTheTeam(index)
+        && typePersonUser.includes(this.getPersonType(index))) {
+      this.gamePlay.deselectCell(this.personIndex);
+      this.gamePlay.selectCell(index);
+      this.personIndex = index;
+    } else if (index === this.personIndex
+      && this.searchForAPersonInTheTeam(index)
+      && typePersonUser.includes(this.getPersonType(index))) {
+      this.gamePlay.selectCell(this.personIndex);
     }
+
+    if ((this.personIndex !== null
+      && !this.distanceCalculation(this.personIndex).includes(index)
+      && !this.attackCalculation(this.personIndex).includes(index)
+      && this.searchForAPersonInTheTeam(index)
+      && !typePersonUser.includes(this.getPersonType(index)))
+      || (this.personIndex !== null
+        && !this.distanceCalculation(this.personIndex).includes(index)
+        && !this.searchForAPersonInTheTeam(index))) {
+      this.gamePlay.deselectCell(index);
+      this.gamePlay.selectCell(this.personIndex);
+      GamePlay.showError('Недопустимый ход');
+    }
+
+    if (this.personIndex !== null) {
+      if (this.distanceCalculation(this.personIndex).includes(index)
+        && !this.searchForAPersonInTheTeam(index)) {
+        this.findPerson(this.personIndex).position = index;
+        this.gamePlay.deselectCell(this.personIndex);
+        this.gamePlay.deselectCell(index);
+        this.personIndex = index;
+        this.gamePlay.selectCell(this.personIndex);
+        this.gamePlay.redrawPositions(this.command);
+        this.activePlayer = 'PC';
+
+        this.movePC();
+      } else if (this.attackCalculation(this.personIndex).includes(index)
+        && this.searchForAPersonInTheTeam(index)
+        && !typePersonUser.includes(this.getPersonType(index))) {
+        this.enemyAttack(index, this.personIndex);
+        this.gamePlay.selectCell(this.personIndex);
+        this.gamePlay.deselectCell(index);
+        this.activePlayer = 'PC';
+      }
+    }
+  }
+
+  enemyAttack(indexTarget, indexAttacker) {
+    const target = this.findPerson(indexTarget);
+    const attacker = this.findPerson(indexAttacker);
+    const damageDone = Math.max(attacker.character.attack - target.character.defence,
+      attacker.character.attack * 0.1);
+
+    this.gamePlay.showDamage(indexTarget, damageDone).then(() => {
+      target.character.health -= damageDone;
+    }).then(() => {
+      if (target.character.health <= 0) {
+        this.command.splice(this.command.indexOf(this.findPerson(target.position)), 1);
+        this.pcCommand.delete(target.character);
+        this.gamePlay.deselectCell(target.position);
+      }
+    }).then(() => {
+      this.gamePlay.redrawPositions(this.command);
+      this.winCheck();
+    })
+      .then(() => {
+        this.movePC();
+      })
+      .catch((e) => {
+        GamePlay.showError(e);
+      });
+  }
+
+  endGame() {
+    GamePlay.showMessage(`Игра закончена. Количество набраных очков: ${this.totalUserPoints}`);
+  }
+
+  movePC() {
+    if (this.activePlayer !== 'PC') {
+      return;
+    }
+    let userInAttackPC = null;
+
+    const teamPC = this.command.filter((item) => item.character instanceof Daemon
+      || item.character instanceof Undead
+      || item.character instanceof Vampire);
+
+    const teamUser = this.command.filter((item) => item.character instanceof Swordsman
+      || item.character instanceof Bowman
+      || item.character instanceof Magician);
+
+    const memberPC = teamPC[Math.floor(Math.random() * teamPC.length)];
+    const cellsMovePC = this.distanceCalculation(memberPC.position);
+    const cellsAttackPC = this.attackCalculation(memberPC.position);
+
+    teamUser.forEach((item) => {
+      if (cellsAttackPC.includes(item.position)) {
+        userInAttackPC = item;
+      }
+    });
+
+    if (userInAttackPC) {
+      const damageDone = Math.max(memberPC.character.attack - userInAttackPC.character.defence,
+        memberPC.character.attack * 0.1);
+
+      this.gamePlay.showDamage(userInAttackPC.position, damageDone).then(() => {
+        userInAttackPC.character.health -= damageDone;
+      }).then(() => {
+        if (userInAttackPC.character.health <= 0) {
+          this.command.splice(this.command.indexOf(this.findPerson(userInAttackPC.position)), 1);
+          this.userCommand.delete(userInAttackPC.character);
+          this.gamePlay.deselectCell(userInAttackPC.position);
+          this.gamePlay.deselectCell(memberPC.position);
+        }
+      }).then(() => {
+        this.gamePlay.redrawPositions(this.command);
+        this.winCheck();
+        this.activePlayer = 'user';
+      })
+        .catch((error) => GamePlay.showMessage(error));
+    } else {
+      this.gamePlay.deselectCell(this.findPerson(memberPC.position).position);
+      this.findPerson(memberPC.position).position = this.gettingARandomPosition(cellsMovePC);
+      this.gamePlay.redrawPositions(this.command);
+      this.activePlayer = 'user';
+    }
+  }
+
+  findPerson(index) {
+    return this.command.find((person) => person.position === index);
+  }
+
+  distanceCalculation(index) {
+    const { boardSize } = this.gamePlay;
+    let moves = [];
+    const person = this.findPerson(index);
+
+    const dist = person.character.distance;
+
+    for (let i = 1; i <= dist; i += 1) {
+      if (index % boardSize === 0) {
+        moves.push(index + i);
+        moves.push(index + i * boardSize);
+        moves.push(index - i * boardSize);
+        moves.push(index + i * (boardSize + 1));
+        moves.push(index - i * (boardSize - 1));
+      } else if ((index + 1) % boardSize === 0) {
+        moves.push(index - i);
+        moves.push(index + i * boardSize);
+        moves.push(index - i * boardSize);
+        moves.push(index - i * (boardSize + 1));
+        moves.push(index + i * (boardSize - 1));
+      } else {
+        // по горизонтали
+        for (let j = 1; j <= dist; j += 1) {
+          if ((index - j) % boardSize === 0) {
+            if (!moves.includes(index - j)) {
+              moves.push(index - j);
+            }
+            break;
+          }
+          if (!moves.includes(index - j)) {
+            moves.push(index - j);
+          }
+        }
+
+        for (let j = 1; j <= dist; j += 1) {
+          if (((index + j) + 1) % boardSize === 0) {
+            if (!moves.includes(index + j)) {
+              moves.push(index + j);
+            }
+            break;
+          }
+          if (!moves.includes(index + j)) {
+            moves.push(index + j);
+          }
+        }
+
+        // по вертикали
+        for (let j = 1; j <= dist; j += 1) {
+          if (!moves.includes(index + (boardSize * j))) {
+            moves.push(index + (boardSize * j));
+          }
+          if (!moves.includes(index - (boardSize * j))) {
+            moves.push(index - (boardSize * j));
+          }
+        }
+
+        // по диагонали
+        for (let j = 1; j <= dist; j += 1) {
+          if ((index - j - boardSize * j) % boardSize === 0) {
+            if (!moves.includes(index - j - boardSize * j)) {
+              moves.push(index - j - boardSize * j);
+            }
+            break;
+          }
+
+          if (!moves.includes(index - j - boardSize * j)) {
+            moves.push(index - j - boardSize * j);
+          }
+        }
+
+        for (let j = 1; j <= dist; j += 1) {
+          if ((((index - j + boardSize * j) % boardSize === 0))) {
+            if (!moves.includes(index - j + boardSize * j)) {
+              moves.push(index - j + boardSize * j);
+            }
+            break;
+          }
+
+          if (!moves.includes(index - j + boardSize * j)) {
+            moves.push(index - j + boardSize * j);
+          }
+        }
+
+        for (let j = 1; j <= dist; j += 1) {
+          if (((index + j + boardSize * j) + 1) % boardSize === 0) {
+            if (!moves.includes(index + j + boardSize * j)) {
+              moves.push((index + j + boardSize * j));
+            }
+            break;
+          }
+
+          if (!moves.includes(index + j + boardSize * j)) {
+            moves.push((index + j + boardSize * j));
+          }
+        }
+
+        for (let j = 1; j <= dist; j += 1) {
+          if (((index + j - boardSize * j) + 1) % boardSize === 0) {
+            if (!moves.includes(index + j - boardSize * j)) {
+              moves.push((index + j - boardSize * j));
+            }
+            break;
+          }
+
+          if (!moves.includes(index + j - boardSize * j)) {
+            moves.push((index + j - boardSize * j));
+          }
+        }
+      }
+    }
+
+    moves = moves.filter((move) => move >= 0 && move <= 63);
+    moves.sort((a, b) => a - b);
+    return moves;
+  }
+
+  attackCalculation(index) {
+    const { boardSize } = this.gamePlay;
+    let attackCells = [];
+    const person = this.findPerson(index);
+    const attack = person.character.attackRange;
+
+    for (let i = 1; i <= attack; i += 1) {
+      if (index % boardSize === 0) {
+        attackCells.push(index + i);
+        attackCells.push(index + i * boardSize);
+        attackCells.push(index - i * boardSize);
+        attackCells.push(index + i * (boardSize + 1));
+        attackCells.push(index - i * (boardSize - 1));
+      } else if ((index + 1) % boardSize === 0) {
+        attackCells.push(index - i);
+        attackCells.push(index + i * boardSize);
+        attackCells.push(index - i * boardSize);
+        attackCells.push(index - i * (boardSize + 1));
+        attackCells.push(index + i * (boardSize - 1));
+      } else {
+        // по горизонтали
+        for (let j = 1; j <= attack; j += 1) {
+          if ((index - j) % boardSize === 0) {
+            if (!attackCells.includes(index - j)) {
+              attackCells.push(index - j);
+            }
+            break;
+          }
+          if (!attackCells.includes(index - j)) {
+            attackCells.push(index - j);
+          }
+        }
+
+        for (let j = 1; j <= attack; j += 1) {
+          if (((index + j) + 1) % boardSize === 0) {
+            if (!attackCells.includes(index + j)) {
+              attackCells.push(index + j);
+            }
+            break;
+          }
+          if (!attackCells.includes(index + j)) {
+            attackCells.push(index + j);
+          }
+        }
+
+        // по вертикали
+        for (let j = 1; j <= attack; j += 1) {
+          if (!attackCells.includes(index + (boardSize * j))) {
+            attackCells.push(index + (boardSize * j));
+          }
+          if (!attackCells.includes(index - (boardSize * j))) {
+            attackCells.push(index - (boardSize * j));
+          }
+        }
+
+        // по диагонали
+        for (let j = 1; j <= attack; j += 1) {
+          if ((index - j - boardSize * j) % boardSize === 0) {
+            if (!attackCells.includes(index - j - boardSize * j)) {
+              attackCells.push(index - j - boardSize * j);
+            }
+            break;
+          }
+          if (!attackCells.includes(index - j - boardSize * j)) {
+            attackCells.push(index - j - boardSize * j);
+          }
+        }
+
+        for (let j = 1; j <= attack; j += 1) {
+          if ((((index - j + boardSize * j) % boardSize === 0))) {
+            if (!attackCells.includes(index - j + boardSize * j)) {
+              attackCells.push(index - j + boardSize * j);
+            }
+            break;
+          }
+
+          if (!attackCells.includes(index - j + boardSize * j)) {
+            attackCells.push(index - j + boardSize * j);
+          }
+        }
+
+        for (let j = 1; j <= attack; j += 1) {
+          if (((index + j + boardSize * j) + 1) % boardSize === 0) {
+            if (!attackCells.includes(index + j + boardSize * j)) {
+              attackCells.push((index + j + boardSize * j));
+            }
+            break;
+          }
+
+          if (!attackCells.includes(index + j + boardSize * j)) {
+            attackCells.push((index + j + boardSize * j));
+          }
+        }
+
+        for (let j = 1; j <= attack; j += 1) {
+          if (((index + j - boardSize * j) + 1) % boardSize === 0) {
+            if (!attackCells.includes(index + j - boardSize * j)) {
+              attackCells.push((index + j - boardSize * j));
+            }
+            break;
+          }
+
+          if (!attackCells.includes(index + j - boardSize * j)) {
+            attackCells.push((index + j - boardSize * j));
+          }
+        }
+      }
+    }
+
+    attackCells = attackCells.filter((cell) => cell >= 0 && cell <= 63);
+    attackCells.sort((a, b) => a - b);
+    return attackCells;
   }
 
   onCellEnter(index) {
     // TODO: react to mouse enter
-
-    // Если в ячейке персонаж игрока, то при наведении на ячейку курсор = pointer
-    if (this.getChar(index) && this.isUserChar(index)) {
-      this.gamePlay.setCursor(cursors.pointer);
-    }
-    // Если валидный диапазон перемещения, то  ячейка зелёным
-    if (this.gameState.selected !== null && !this.getChar(index) && this.isMoving(index)) {
-      this.gamePlay.setCursor(cursors.pointer);
-      this.gamePlay.selectCell(index, 'green');
-    }
-    // сведения о персонаже
-    if (this.getChar(index)) {
-      const char = this.getChar(index).character;
-      const message = `\u{1F396}${char.level}\u{2694}${char.attack}\u{1F6E1}${char.defence}\u{2764}${char.health}`;
+    if (this.searchForAPersonInTheTeam(index)) {
+      const personCurrent = this.findPerson(index);
+      const message = `\u{1F396}${personCurrent.character.level}\u{2694}${personCurrent.character.attack}\u{1F6E1}${personCurrent.character.defence}\u{2764}${personCurrent.character.health}`;
       this.gamePlay.showCellTooltip(message, index);
     }
-    // Если валидный диапазон атаки, то при наведении выделяем ячейку красным ячейка красная
-    if (this.gameState.selected !== null && this.getChar(index) && !this.isUserChar(index)) {
-      if (this.isAttack(index)) {
-        this.gamePlay.setCursor(cursors.crosshair);
-        this.gamePlay.selectCell(index, 'red');
+
+    if (this.personIndex === null) {
+      if (this.searchForAPersonInTheTeam(index)
+        && typePersonUser.includes(this.getPersonType(index))) {
+        this.gamePlay.setCursor(cursors.pointer);
+      } else if (this.searchForAPersonInTheTeam(index)
+        && !typePersonUser.includes(this.getPersonType(index))) {
+        this.gamePlay.setCursor(cursors.notallowed);
       }
     }
-    // Если не валидные диапазоны атаки и перемещения и бот, то при наведении курсор = notallowed
-    if (this.gameState.selected !== null && !this.isAttack(index) && !this.isMoving(index)) {
-      if (!this.isUserChar(index)) {
+
+    if (this.personIndex !== null) {
+      if (index === this.personIndex) {
+        this.gamePlay.selectCell(this.personIndex);
+        this.gamePlay.setCursor(cursors.pointer);
+      }
+
+      if (this.searchForAPersonInTheTeam(index)
+        && typePersonUser.includes(this.getPersonType(index))) {
+        this.gamePlay.deselectCell(this.moveIndex);
+        this.moveIndex = null;
+        this.gamePlay.selectCell(this.personIndex);
+        this.gamePlay.setCursor(cursors.pointer);
+      }
+
+      if (this.searchForAPersonInTheTeam(index)
+        && typePersonUser.includes(this.getPersonType(index))
+      && index !== this.personIndex) {
+        this.gamePlay.deselectCell(index);
+      } else if (this.searchForAPersonInTheTeam(index)
+        && !typePersonUser.includes(this.getPersonType(index))
+      && !this.attackCalculation(this.personIndex).includes(index)) {
+        this.gamePlay.setCursor(cursors.notallowed);
+      } else if (this.searchForAPersonInTheTeam(index)
+        && !typePersonUser.includes(this.getPersonType(index))
+        && this.attackCalculation(this.personIndex).includes(index)) {
+        if (this.moveIndex === null) {
+          this.moveIndex = index;
+        } else {
+          this.gamePlay.deselectCell(this.moveIndex);
+          this.gamePlay.selectCell(this.personIndex);
+          this.moveIndex = index;
+        }
+        this.gamePlay.selectCell(index, 'red');
+        this.gamePlay.setCursor(cursors.crosshair);
+      } else if (!this.searchForAPersonInTheTeam(index)
+        && this.distanceCalculation(this.personIndex).includes(index)) {
+        this.gamePlay.selectCell(index, 'green');
+        this.gamePlay.setCursor(cursors.pointer);
+        if (this.moveIndex === null) {
+          this.moveIndex = index;
+        } else {
+          this.gamePlay.deselectCell(this.moveIndex);
+          this.gamePlay.selectCell(this.personIndex);
+          this.moveIndex = index;
+        }
+      } else if (!this.searchForAPersonInTheTeam(index)
+        && !this.distanceCalculation(this.personIndex).includes(index)
+      && !this.attackCalculation(this.personIndex).includes(index)) {
+        this.gamePlay.deselectCell(this.moveIndex);
         this.gamePlay.setCursor(cursors.notallowed);
       }
     }
@@ -125,385 +730,6 @@ export default class GameController {
 
   onCellLeave(index) {
     // TODO: react to mouse leave
-    this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected-red'));
-    this.gamePlay.cells.forEach((elem) => elem.classList.remove('selected-green'));
     this.gamePlay.hideCellTooltip(index);
-    this.gamePlay.setCursor(cursors.auto);
-  }
-
-  getAttack(idx) {
-    if (this.gameState.isUsersTurn) {
-      const attacker = this.getChar(this.gameState.selected).character;
-      const target = this.getChar(idx).character;
-      const damage = Math.max(attacker.attack - target.defence, attacker.attack * 0.1);
-      if (!attacker || !target) {
-        return;
-      }
-      this.gamePlay.showDamage(idx, damage).then(() => {
-        target.health -= damage;
-        if (target.health <= 0) {
-          this.getDeletion(idx);
-          this.botTeam.delete(target);
-        }
-      }).then(() => {
-        this.gamePlay.redrawPositions(this.gameState.allPositions);
-      }).then(() => {
-        this.getGameResult();
-        this.getBotsResponse();
-      });
-      this.gameState.isUsersTurn = false;
-    }
-  }
-
-  getUsersTurn(idx) {
-    this.getSelectedChar().position = idx;
-    this.gamePlay.deselectCell(this.gameState.selected);
-    this.gamePlay.redrawPositions(this.gameState.allPositions);
-    this.gameState.selected = idx;
-    this.gameState.isUsersTurn = false;
-    this.getBotsResponse();
-  }
-
-  getBotsResponse() {
-    if (this.gameState.isUsersTurn) {
-      return;
-    }
-    const botsTeam = this.gameState.allPositions.filter((e) => (
-      e.character instanceof Vampire
-      || e.character instanceof Daemon
-      || e.character instanceof Undead
-    ));
-    const usersTeam = this.gameState.allPositions.filter((e) => (
-      e.character instanceof Bowman
-      || e.character instanceof Swordsman
-      || e.character instanceof Magician
-    ));
-    let bot = null;
-    let target = null;
-
-    if (botsTeam.length === 0 || usersTeam.length === 0) {
-      return;
-    }
-
-    botsTeam.forEach((elem) => {
-      const rangeAttack = this.calcRange(elem.position, elem.character.attackRange);
-      usersTeam.forEach((val) => {
-        if (rangeAttack.includes(val.position)) {
-          bot = elem;
-          target = val;
-        }
-      });
-    });
-
-    if (target) {
-      const damage = Math.max(
-        bot.character.attack - target.character.defence, bot.character.attack * 0.1,
-      );
-      this.gamePlay.showDamage(target.position, damage).then(() => {
-        target.character.health -= damage;
-        if (target.character.health <= 0) {
-          this.getDeletion(target.position);
-          this.userTeam.delete(target.character);
-          this.gamePlay.deselectCell(this.gameState.selected);
-          this.gameState.selected = null;
-        }
-      }).then(() => {
-        this.gamePlay.redrawPositions(this.gameState.allPositions);
-        this.gameState.isUsersTurn = true;
-      }).then(() => {
-        this.getGameResult();
-      });
-    } else {
-      bot = botsTeam[Math.floor(Math.random() * botsTeam.length)];
-      const botRange = this.calcRange(bot.position, bot.character.distance);
-      botRange.forEach((e) => {
-        this.gameState.allPositions.forEach((i) => {
-          if (e === i.position) {
-            botRange.splice(botRange.indexOf(i.position), 1);
-          }
-        });
-      });
-      const botPos = this.getRandom(botRange);
-      bot.position = botPos;
-
-      this.gamePlay.redrawPositions(this.gameState.allPositions);
-      this.gameState.isUsersTurn = true;
-    }
-  }
-
-  // победа или поражение
-  getGameResult() {
-    if (this.userTeam.members.size === 0) {
-      this.gameState.statistics.push(this.gameState.points);
-      GamePlay.showMessage(`Вы проиграли...Количество набранных очков: ${this.gameState.points}`);
-    }
-
-    if (this.botTeam.members.size === 0 && this.gameState.level === 4) {
-      this.scoringPoints();
-      this.gameState.statistics.push(this.gameState.points);
-      GamePlay.showMessage(`Поздравляем! Вы победили! Количество набранных очков: ${this.gameState.points},
-      Максимальное количество очков: ${Math.max(...this.gameState.statistics)}`);
-      this.gameState.level += 1;
-    }
-
-    if (this.botTeam.members.size === 0 && this.gameState.level <= 3) {
-      this.gameState.isUsersTurn = true;
-      this.scoringPoints();
-      GamePlay.showMessage(`Вы прошли уровень ${this.gameState.level} Количество набранных очков: ${this.gameState.points}`);
-      this.gameState.level += 1;
-      this.getLevelUp();
-    }
-  }
-
-  // переход на следующий уровень
-
-  getLevelUp() {
-    this.gameState.allPositions = [];
-    this.userTeam.members.forEach((char) => char.levelUp());
-
-    if (this.gameState.level === 2) {
-      this.userTeam.addAll(generateTeam(this.userCharacters, 1, 1));
-      this.botTeam.addAll(generateTeam(this.botCharacters, 2, this.userTeam.members.size));
-    }
-
-    if (this.gameState.level === 3) {
-      this.userTeam.addAll(generateTeam(this.userCharacters, 2, 2));
-      this.botTeam.addAll(generateTeam(this.botCharacters, 3, this.userTeam.members.size));
-    }
-
-    if (this.gameState.level === 4) {
-      this.userTeam.addAll(generateTeam(this.userCharacters, 3, 2));
-      this.botTeam.addAll(generateTeam(this.botCharacters, 4, this.userTeam.members.size));
-    }
-
-    GamePlay.showMessage(`Уровень ${this.gameState.level}`);
-    this.gamePlay.drawUi(themes[this.gameState.level]);
-    this.addsTheTeamToPosition(this.userTeam, this.getUserStartPositions());
-    this.addsTheTeamToPosition(this.botTeam, this.getBotStartPositions());
-    this.gamePlay.redrawPositions(this.gameState.allPositions);
-  }
-
-  // начисление очков пользователю в конце уровня
-
-  scoringPoints() {
-    this.gameState.points += this.userTeam.toArray().reduce((a, b) => a + b.health, 0);
-  }
-
-  // Удаляет персонажа из игрового поля
-
-  getDeletion(idx) {
-    const state = this.gameState.allPositions;
-    state.splice(state.indexOf(this.getChar(idx)), 1);
-  }
-
-  // Проверяет валидность диапазона перемещения
-  isMoving(idx) {
-    if (this.getSelectedChar()) {
-      const moving = this.getSelectedChar().character.distance;
-      const arr = this.calcRange(this.gameState.selected, moving);
-      return arr.includes(idx);
-    }
-    return false;
-  }
-
-  // Проверяет валидность диапазона атаки
-
-  isAttack(idx) {
-    if (this.getSelectedChar()) {
-      const stroke = this.getSelectedChar().character.attackRange;
-      const arr = this.calcRange(this.gameState.selected, stroke);
-      return arr.includes(idx);
-    }
-    return false;
-  }
-
-  // Возвращает выбранного героя
-
-  getSelectedChar() {
-    return this.gameState.allPositions.find((elem) => elem.position === this.gameState.selected);
-  }
-
-  // Возвращает массив возможных позиций игрока при старте
-
-  getUserStartPositions() {
-    const size = this.gamePlay.boardSize;
-    this.userPosition = [];
-    for (let i = 0, j = 1; this.userPosition.length < size * 2; i += size, j += size) {
-      this.userPosition.push(i, j);
-    }
-    return this.userPosition;
-  }
-
-  // Возвращает массив возможных позиций бота при старте игры
-
-  getBotStartPositions() {
-    const size = this.gamePlay.boardSize;
-    const botPosition = [];
-    for (let i = size - 2, j = size - 1; botPosition.length < size * 2; i += size, j += size) {
-      botPosition.push(i, j);
-    }
-    return botPosition;
-  }
-
-  // Возвращает позицию
-
-  getRandom(positions) {
-    this.positions = positions;
-    return this.positions[Math.floor(Math.random() * this.positions.length)];
-  }
-
-  // Добавляет команду
-  addsTheTeamToPosition(team, positions) {
-    const copyPositions = [...positions];
-    for (const item of team) {
-      const random = this.getRandom(copyPositions);
-      this.gameState.allPositions.push(new PositionedCharacter(item, random));
-      copyPositions.splice(copyPositions.indexOf(random), 1);
-    }
-  }
-
-  isUserChar(idx) {
-    if (this.getChar(idx)) {
-      const char = this.getChar(idx).character;
-      return this.userCharacters.some((elem) => char instanceof elem);
-    }
-    return false;
-  }
-
-  // Проверяет по индексу бот
-
-  isBotChar(idx) {
-    if (this.getChar(idx)) {
-      const bot = this.getChar(idx).character;
-      return this.botCharacters.some((elem) => bot instanceof elem);
-    }
-    return false;
-  }
-
-  // Возвращает персонажа по индексу из gameState.allPositions
-
-  getChar(idx) {
-    return this.gameState.allPositions.find((elem) => elem.position === idx);
-  }
-
-  // Расчитывает диапазон перемещения или атаки
-
-  calcRange(idx, char) {
-    const brdSize = this.gamePlay.boardSize;
-    const range = [];
-    const leftBorder = [];
-    const rightBorder = [];
-
-    for (let i = 0, j = brdSize - 1; leftBorder.length < brdSize; i += brdSize, j += brdSize) {
-      leftBorder.push(i);
-      rightBorder.push(j);
-    }
-
-    for (let i = 1; i <= char; i += 1) {
-      range.push(idx + (brdSize * i));
-      range.push(idx - (brdSize * i));
-    }
-
-    for (let i = 1; i <= char; i += 1) {
-      if (leftBorder.includes(idx)) {
-        break;
-      }
-      range.push(idx - i);
-      range.push(idx - (brdSize * i + i));
-      range.push(idx + (brdSize * i - i));
-      if (leftBorder.includes(idx - i)) {
-        break;
-      }
-    }
-
-    for (let i = 1; i <= char; i += 1) {
-      if (rightBorder.includes(idx)) {
-        break;
-      }
-      range.push(idx + i);
-      range.push(idx - (brdSize * i - i));
-      range.push(idx + (brdSize * i + i));
-      if (rightBorder.includes(idx + i)) {
-        break;
-      }
-    }
-
-    return range.filter((elem) => elem >= 0 && elem <= (brdSize ** 2 - 1));
-  }
-
-  onNewGameClick() {
-    this.userTeam = new Team();
-    this.botTeam = new Team();
-    this.botCharacters = [Daemon, Undead, Vampire];
-    this.userCharacters = [Bowman, Swordsman, Magician];
-    this.gameState.selected = null;
-    this.gameState.level = 1;
-    this.gameState.points = 0;
-    this.gameState.allPositions = [];
-    this.gameState.isUsersTurn = true;
-
-    this.gamePlay.drawUi(themes[this.gameState.level]);
-    this.userTeam.addAll(generateTeam([Bowman, Swordsman], 1, 2));
-    this.botTeam.addAll(generateTeam(this.botCharacters, 1, 2));
-    this.addsTheTeamToPosition(this.userTeam, this.getUserStartPositions());
-    this.addsTheTeamToPosition(this.botTeam, this.getBotStartPositions());
-    this.gamePlay.redrawPositions(this.gameState.allPositions);
-    GamePlay.showMessage(`Уровень ${this.gameState.level}`);
-  }
-
-  onSaveGameClick() {
-    this.stateService.save(GameState.from(this.gameState));
-    GamePlay.showMessage('Игра сохранена');
-  }
-
-  onLoadGameClick() {
-    GamePlay.showMessage('Игра загружается');
-    const load = this.stateService.load();
-    if (!load) {
-      GamePlay.showError('Ошибка загрузки');
-    }
-    this.gameState.isUsersTurn = load.isUsersTurn;
-    this.gameState.level = load.level;
-    this.gameState.allPositions = [];
-    this.gameState.points = load.points;
-    this.gameState.statistics = load.statistics;
-    this.gameState.selected = load.selected;
-    this.userTeam = new Team();
-    this.botTeam = new Team();
-    load.allPositions.forEach((elem) => {
-      let char;
-
-      switch (elem.character.type) {
-        case 'swordsman':
-          char = new Swordsman(elem.character.level);
-          this.userTeam.addAll([char]);
-          break;
-        case 'bowman':
-          char = new Bowman(elem.character.level);
-          this.userTeam.addAll([char]);
-          break;
-        case 'magician':
-          char = new Magician(elem.character.level);
-          this.userTeam.addAll([char]);
-          break;
-        case 'undead':
-          char = new Undead(elem.character.level);
-          this.botTeam.addAll([char]);
-          break;
-        case 'vampire':
-          char = new Vampire(elem.character.level);
-          this.botTeam.addAll([char]);
-          break;
-        case 'daemon':
-          char = new Daemon(elem.character.level);
-          this.botTeam.addAll([char]);
-          break;
-           // no default
-      }
-      char.health = elem.character.health;
-      this.gameState.allPositions.push(new PositionedCharacter(char, elem.position));
-    });
-    this.gamePlay.drawUi(themes[this.gameState.level]);
-    this.gamePlay.redrawPositions(this.gameState.allPositions);
   }
 }

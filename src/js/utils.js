@@ -1,15 +1,36 @@
 export function calcTileType(index, boardSize) {
   // TODO: write logic here
-  if (index === 0) return 'top-left';
-  if ((index > 0) && (index < boardSize - 1)) return 'top';
-  if (index === boardSize - 1) return 'top-right';
-  if ((index % boardSize === 0)
-    && (index !== 0) && (index !== boardSize * (boardSize - 1))) return 'left';
-  if ((index % boardSize === 7)
-    && (index !== boardSize - 1) && (index !== boardSize * boardSize - 1)) return 'right';
-  if (index === boardSize * (boardSize - 1)) return 'bottom-left';
-  if ((index > boardSize * (boardSize - 1)) && (index < boardSize * boardSize - 1)) return 'bottom';
-  if (index === boardSize * boardSize - 1) return 'bottom-right';
+
+  if (index === 0) {
+    return 'top-left';
+  }
+  if (index < boardSize - 1) {
+    return 'top';
+  }
+  if (index === boardSize - 1) {
+    return 'top-right';
+  }
+
+  const sizeBoard = boardSize * boardSize;
+
+  if (index % boardSize === 0 && (index + boardSize) < sizeBoard) {
+    return 'left';
+  }
+  if (index % boardSize === 0 && (index + boardSize) >= sizeBoard) {
+    return 'bottom-left';
+  }
+  if (index === sizeBoard - 1) {
+    return 'bottom-right';
+  }
+  if ((index + 1) % boardSize === 0) {
+    return 'right';
+  }
+  if (index < sizeBoard - 1 && index > sizeBoard - boardSize) {
+    return 'bottom';
+  }
+  if (index < sizeBoard - 1) {
+    return 'center';
+  }
   return 'center';
 }
 

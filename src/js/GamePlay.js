@@ -213,7 +213,6 @@ export default class GamePlay {
       damageEl.textContent = damage;
       damageEl.classList.add('damage');
       cell.appendChild(damageEl);
-
       damageEl.addEventListener('animationend', () => {
         cell.removeChild(damageEl);
         resolve();
@@ -229,5 +228,11 @@ export default class GamePlay {
     if (this.container === null) {
       throw new Error('GamePlay not bind to DOM');
     }
+  }
+
+  blockedTheField() {
+    this.cellClickListeners = [];
+    this.cellEnterListeners = [];
+    this.cellLeaveListeners = [];
   }
 }
