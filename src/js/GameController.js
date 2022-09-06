@@ -267,6 +267,8 @@ export default class GameController {
     }
   }
 
+
+
   onCellClick(index) {
     // TODO: react to click
     if (this.levelGame === 5 || this.userCommand.members.size === 0) {
@@ -370,6 +372,10 @@ export default class GameController {
   endGame() {
     GamePlay.showMessage(`Игра закончена. Количество набраных очков: ${this.totalUserPoints}`);
   }
+
+
+
+
 
   movePC() {
     if (this.activePlayer !== 'PC') {
@@ -733,3 +739,7 @@ export default class GameController {
     this.gamePlay.hideCellTooltip(index);
   }
 }
+
+
+
+
