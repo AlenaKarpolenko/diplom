@@ -1,37 +1,48 @@
 export function calcTileType(index, boardSize) {
   // TODO: write logic here
+  const columnNumber = index % boardSize;
+  const rowNumber = Math.floor(index / boardSize);
+  const max = boardSize - 1;
 
-  if (index === 0) {
+  if (!columnNumber && !rowNumber) {
     return 'top-left';
   }
-  if (index < boardSize - 1) {
-    return 'top';
-  }
-  if (index === boardSize - 1) {
+
+  if (columnNumber === max && !rowNumber) {
     return 'top-right';
   }
 
-  const sizeBoard = boardSize * boardSize;
-
-  if (index % boardSize === 0 && (index + boardSize) < sizeBoard) {
-    return 'left';
+  if (!rowNumber) {
+    return 'top';
   }
-  if (index % boardSize === 0 && (index + boardSize) >= sizeBoard) {
+
+  if (!columnNumber && rowNumber === max) {
     return 'bottom-left';
   }
-  if (index === sizeBoard - 1) {
+
+  if (columnNumber === max && rowNumber === max) {
     return 'bottom-right';
   }
-  if ((index + 1) % boardSize === 0) {
-    return 'right';
-  }
-  if (index < sizeBoard - 1 && index > sizeBoard - boardSize) {
+
+  if (rowNumber === max) {
     return 'bottom';
   }
-  if (index < sizeBoard - 1) {
-    return 'center';
+
+  if (columnNumber === max) {
+    return 'right';
   }
+
+  if (!columnNumber) {
+    return 'left';
+  }
+
   return 'center';
+}
+
+export function tooltipMessage({
+  level, attack, defence, health,
+}) {
+  return `🎖${level} ⚔${attack} 🛡${defence} ❤${health}`;
 }
 
 export function calcHealthLevel(health) {

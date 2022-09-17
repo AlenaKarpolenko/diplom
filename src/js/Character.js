@@ -29,7 +29,7 @@ export default class Character {
       this.health -= points;
     }
     if (this.health < 0) {
-     this.health = 0;
+      this.health = 0;
     }
   }
 
@@ -37,11 +37,10 @@ export default class Character {
     this.attack = Math.max(this.attack, +(this.attack * (1.8 - (1 - this.health / 100))).toFixed());
     this.defence = Math.max(
       this.defence,
-      +(this.defence * (1.8 - (1 - this.health / 100))).toFixed()
+      +(this.defence * (1.8 - (1 - this.health / 100))).toFixed(),
     );
   }
 }
 
-//levelUp() {
-  //this.attack = Math.floor(Math.max(this.attack, this.attack * (1.8 - this.health / 100)));
-
+// levelUp() {
+// this.attack = Math.floor(Math.max(this.attack, this.attack * (1.8 - this.health / 100)));

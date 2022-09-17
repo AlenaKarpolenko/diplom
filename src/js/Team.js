@@ -3,24 +3,23 @@ export default class Team {
     this.members = new Set();
   }
 
-  add(obj) {
-    if (this.members.has(obj)) {
-      throw new Error('Ошибка!Такой персонаж уже есть');
-    } else {
-      this.members.add(obj);
+  add(character) {
+    if (this.members.has(character)) {
+      throw new Error('Ошибка!Такой персонаж уже eсть в команде!');
     }
+    this.members.add(character);
   }
 
-  addAll(...obj) {
-    obj.forEach((item) => this.members.add(item));
+  addAll(characters) {
+    this.members = new Set([...this.members, ...characters]);
+  }
+
+  delete(elem) {
+    this.members.delete(elem);
   }
 
   toArray() {
     return [...this.members];
-  }
-
-  delete(obj) {
-    this.members.delete(obj);
   }
 
   * [Symbol.iterator]() {

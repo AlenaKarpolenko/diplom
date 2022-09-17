@@ -1,11 +1,18 @@
 export default class GameState {
-  static from() {
+  constructor() {
+    this.isUsersTurn = true;
+    this.level = 1;
+    this.allPositions = [];
+    this.points = 0;
+    this.statistics = [];
+    this.selected = null;
+  }
+
+  static from(object) {
     // TODO: create object
-    return {
-      totalUserPoints: 0,
-      levelUserPoint: 0,
-      activePlayer: null,
-      levelGame: 1,
-    };
+    if (typeof object === 'object') {
+      return object;
+    }
+    return null;
   }
 }
