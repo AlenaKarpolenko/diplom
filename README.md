@@ -1,6 +1,6 @@
  [![Build status](https://ci.appveyor.com/api/projects/status/mxjxoulktpf916g7?svg=true)](https://ci.appveyor.com/project/AlenaKarpolenko/diplom)
  
-
+https://alenakarpolenko.github.io/diplom/
  
 ## Предыстория
 
