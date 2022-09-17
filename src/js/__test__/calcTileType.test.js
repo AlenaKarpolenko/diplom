@@ -1,73 +1,65 @@
-import { calcTileType, calcHealthLevel } from '../utils';
+import { calcHealthLevel, calcTileType } from '../utils';
 
-test('calcTileType: top-left', () => {
-  const expected = 'top-left';
+test('top-left', () => {
   const received = calcTileType(0, 8);
-  expect(received).toEqual(expected);
+  const expected = 'top-left';
+  expect(received).toBe(expected);
 });
 
-test('calcTileType: top', () => {
-  const expected = 'top';
-  const received = calcTileType(5, 8);
-  expect(received).toEqual(expected);
-});
-
-test('calcTileType: top-right', () => {
-  const expected = 'top-right';
+test('top-right', () => {
   const received = calcTileType(7, 8);
-  expect(received).toEqual(expected);
+  const expected = 'top-right';
+  expect(received).toBe(expected);
 });
 
-test('calcTileType: left', () => {
-  const expected = 'left';
-  const received = calcTileType(16, 8);
-  expect(received).toEqual(expected);
+test('top', () => {
+  const received = calcTileType(1, 8);
+  const expected = 'top';
+  expect(received).toBe(expected);
 });
 
-test('calcTileType: center', () => {
-  const expected = 'center';
-  const received = calcTileType(18, 8);
-  expect(received).toEqual(expected);
-});
-
-test('calcTileType: right', () => {
-  const expected = 'right';
-  const received = calcTileType(23, 8);
-  expect(received).toEqual(expected);
-});
-
-test('calcTileType: bottom-left', () => {
-  const expected = 'bottom-left';
+test('bottom-left', () => {
   const received = calcTileType(56, 8);
-  expect(received).toEqual(expected);
+  const expected = 'bottom-left';
+  expect(received).toBe(expected);
 });
 
-test('calcTileType: bottom', () => {
-  const expected = 'bottom';
-  const received = calcTileType(60, 8);
-  expect(received).toEqual(expected);
-});
-
-test('calcTileType: bottom-right', () => {
-  const expected = 'bottom-right';
+test('bottom-right', () => {
   const received = calcTileType(63, 8);
-  expect(received).toEqual(expected);
+  const expected = 'bottom-right';
+  expect(received).toBe(expected);
 });
 
-test('calcHealthLevel: critical', () => {
-  const expected = 'critical';
-  const received = calcHealthLevel(10);
-  expect(received).toEqual(expected);
+test('bottom', () => {
+  const received = calcTileType(57, 8);
+  const expected = 'bottom';
+  expect(received).toBe(expected);
 });
 
-test('calcHealthLevel: normal', () => {
-  const expected = 'normal';
-  const received = calcHealthLevel(40);
-  expect(received).toEqual(expected);
+test('right', () => {
+  const received = calcTileType(15, 8);
+  const expected = 'right';
+  expect(received).toBe(expected);
 });
 
-test('calcHealthLevel: high', () => {
-  const expected = 'high';
-  const received = calcHealthLevel(90);
-  expect(received).toEqual(expected);
+test('left', () => {
+  const received = calcTileType(16, 8);
+  const expected = 'left';
+  expect(received).toBe(expected);
 });
+
+test('center', () => {
+  const received = calcTileType(20, 8);
+  const expected = 'center';
+  expect(received).toBe(expected);
+});
+
+test.each([
+  [10, 'critical'],
+  [40, 'normal'],
+  [60, 'high'],
+])(
+  ('Функция calcHealthLevel должна вернуть корректное значение'), (health, result) => {
+    expect(calcHealthLevel(health)).toBe(result);
+  },
+);

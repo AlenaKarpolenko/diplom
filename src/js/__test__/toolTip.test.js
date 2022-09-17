@@ -1,13 +1,9 @@
-test('проверка правильности отображения информации', () => {
-  const person = {
-    level: 3,
-    attack: 25,
-    defence: 25,
-    health: 100,
-  };
+import { tooltipMessage } from '../utils';
 
-  const template = `\u{1F396}${person.level}\u{2694}${person.attack}\u{1F6E1}${person.defence}\u{2764}${person.health}`;
-  const expected = '\u{1F396}3\u{2694}25\u{1F6E1}25\u{2764}100';
-
-  expect(template).toBe(expected);
+test('проверка отображения информации о персонаже', () => {
+  const expected = '🎖10 ⚔10 🛡10 ❤10';
+  const received = tooltipMessage({
+    level: 10, attack: 10, defence: 10, health: 10,
+  });
+  expect(received).toBe(expected);
 });
